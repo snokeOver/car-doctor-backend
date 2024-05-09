@@ -30,15 +30,17 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// Personal MiddleWares
+// Additional MiddleWares
 const logger = async (req, res, next) => {
-  console.log("Called:", req.host, req.originalUrl);
+  console.log("Called:", req.hostname, req.originalUrl);
   next();
 };
 
+// Middlewares to verify token
 const verifyToken = async (req, res, next) => {
   const receivedToken = req.cookies.token;
   if (!receivedToken) {
+    console.log("No token");
     return res.status(401).send({ message: "Unauthorised" });
   }
   jwt.verify(receivedToken, process.env.JWT_SECRET, (err, decoded) => {
@@ -73,10 +75,8 @@ async function run() {
         res
           .cookie("token", token, {
             httpOnly: true,
-            secure: false, // for development https, then "true"
-            sameSite: "strict",
-            // secure: process.env.NODE_ENV === "production" ? true : false,
-            // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            secure: process.env.NODE_ENV === "production" ? true : false,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           })
           .send({ success: true });
       } catch (err) {
@@ -86,7 +86,14 @@ async function run() {
     });
 
     app.post("/api/logout", (req, res) => {
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production" ? true : false,
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
     });
 
     // Services Relative API
