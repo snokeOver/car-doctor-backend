@@ -12,11 +12,18 @@ dotenv.config();
 
 const serverPort = process.env.SERVER_PORT || 5000;
 const mongoUrl = process.env.MONGO_URL;
+const allowedUrls = process.env.ALLOWED_URLS.split(",");
 
 // Middlewares
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5175"],
+    origin: function (origin, callback) {
+      if (!origin || allowedUrls.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"), false);
+      }
+    },
     credentials: true,
   })
 );
@@ -76,6 +83,10 @@ async function run() {
         console.error(err.message);
         res.status(500).send({ message: "Internal server error" });
       }
+    });
+
+    app.post("/api/logout", (req, res) => {
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
     // Services Relative API
